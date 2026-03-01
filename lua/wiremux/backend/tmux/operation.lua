@@ -18,7 +18,7 @@ local function submit(targets)
 	vim.defer_fn(function()
 		local batch = {}
 		for _, t in ipairs(targets) do
-			table.insert(batch, action.send_keys(t.id, ""))
+			table.insert(batch, action.send_keys(t.id, "Enter"))
 		end
 		client.execute(batch)
 	end, 300)
@@ -167,7 +167,7 @@ function M.create(target_name, def, st)
 	state.set_instance_metadata(id, target_name, st.origin_pane_id or "", vim.fn.getcwd(), kind)
 
 	if use_shell and cmd then
-		client.execute({ action.send_keys(id, cmd) })
+		client.execute({ action.send_keys(id, { cmd, "Enter" }) })
 	end
 
 	notify.debug("create: %s %s target=%s", kind, id, target_name)

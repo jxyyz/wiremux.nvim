@@ -2,6 +2,22 @@
 
 local helpers = require("tests.helpers_operation")
 
+describe("action.send_keys", function()
+	local action = require("wiremux.backend.tmux.action")
+
+	it("accepts single string key", function()
+		assert.are.same({ "send-keys", "-t", "%1", "Enter" }, action.send_keys("%1", "Enter"))
+	end)
+
+	it("accepts array of keys", function()
+		assert.are.same({ "send-keys", "-t", "%1", "i", "Enter" }, action.send_keys("%1", { "i", "Enter" }))
+	end)
+
+	it("accepts modifier keys", function()
+		assert.are.same({ "send-keys", "-t", "%1", "C-c" }, action.send_keys("%1", "C-c"))
+	end)
+end)
+
 describe("tmux operations", function()
 	local mocks
 
@@ -222,6 +238,28 @@ describe("tmux operations", function()
 
 			local new_window_cmd = captured_cmds[1]
 			assert.are.equal("myapp", new_window_cmd[3])
+		end)
+
+		it("sends cmd with Enter for shell targets", function()
+			local shell_cmds
+			local call_count = 0
+
+			mocks.client.execute = function(cmds)
+				call_count = call_count + 1
+				if call_count == 1 then
+					return "%5"
+				else
+					shell_cmds = cmds
+					return "ok"
+				end
+			end
+
+			local st = { instances = {}, origin_pane_id = "%0" }
+			local def = { kind = "pane", shell = true, cmd = "npm start" }
+
+			mocks.operation.create("myapp", def, st)
+
+			assert.are.same({ { "send-keys", "-t", "%5", "npm start", "Enter" } }, shell_cmds)
 		end)
 
 		it("ignores function label for window name", function()
