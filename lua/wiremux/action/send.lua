@@ -13,43 +13,43 @@ local M = {}
 ---@param item wiremux.action.SendItem
 ---@return boolean
 local function is_visible(item)
-	local visible = item.visible
+    local visible = item.visible
 
-	if visible == nil then
-		return true
-	end
+    if visible == nil then
+        return true
+    end
 
-	if type(visible) == "boolean" then
-		return visible
-	end
+    if type(visible) == "boolean" then
+        return visible
+    end
 
-	-- Function
-	local ok, result = pcall(visible)
-	if not ok then
-		require("wiremux.utils.notify").warn(string.format("Error in visible(): %s", result))
-		return false
-	end
-	return result == true
+    -- Function
+    local ok, result = pcall(visible)
+    if not ok then
+        require("wiremux.utils.notify").warn(string.format("Error in visible(): %s", result))
+        return false
+    end
+    return result == true
 end
 
 ---Build picker items from send library
 ---@param items wiremux.action.SendItem[]
 ---@return table[] Picker items
 local function build_picker_items(items)
-	local picker_items = {}
+    local picker_items = {}
 
-	for _, item in ipairs(items) do
-		if is_visible(item) then
-			local label = item.label or item.value
+    for _, item in ipairs(items) do
+        if is_visible(item) then
+            local label = item.label or item.value
 
-			table.insert(picker_items, {
-				label = label,
-				value = item,
-			})
-		end
-	end
+            table.insert(picker_items, {
+                label = label,
+                value = item,
+            })
+        end
+    end
 
-	return picker_items
+    return picker_items
 end
 
 ---Execute the send action with expanded text
@@ -57,123 +57,143 @@ end
 ---@param opts wiremux.config.ActionConfig
 ---@param send_opts { submit: boolean, title?: string, pre_keys?: string|string[], post_keys?: string|string[] }
 local function do_send(expanded, opts, send_opts)
-	local config = require("wiremux.config")
-	local action = require("wiremux.core.action")
-	local backend = require("wiremux.backend").get()
+    local config = require("wiremux.config")
+    local action = require("wiremux.core.action")
+    local backend = require("wiremux.backend").get()
 
-	if not backend then
-		return
-	end
+    if not backend then
+        return
+    end
 
-	local focus = opts.focus or config.opts.actions.send.focus
-	local backend_opts = vim.tbl_extend("force", send_opts, { focus = focus })
+    local focus = opts.focus or config.opts.actions.send.focus
+    local backend_opts = vim.tbl_extend("force", send_opts, { focus = focus })
 
-	action.run({
-		prompt = "Send to",
-		behavior = opts.behavior or config.opts.actions.send.behavior or "pick",
-		mode = opts.mode or "auto",
-		filter = opts.filter,
-		target = opts.target,
-	}, {
-		on_targets = function(targets, state)
-			backend.send(expanded, targets, backend_opts, state)
-		end,
-		on_definition = function(name, def, state)
-			local has_own_cmd = def.cmd ~= nil
-			local modified_def = vim.tbl_extend("force", {}, def, {
-				cmd = def.cmd or expanded,
-				title = send_opts.title,
-			})
-			local inst = backend.create(name, modified_def, state)
-			if inst and has_own_cmd then
-				backend.wait_for_ready(inst, { timeout_ms = def.startup_timeout }, function()
-					backend.send(expanded, { inst }, backend_opts, state)
-				end)
-			end
-		end,
-	})
+    action.run({
+        prompt = "Send to",
+        behavior = opts.behavior or config.opts.actions.send.behavior or "pick",
+        mode = opts.mode or "auto",
+        filter = opts.filter,
+        target = opts.target,
+    }, {
+        on_targets = function(targets, state)
+            backend.send(expanded, targets, backend_opts, state)
+        end,
+        on_definition = function(name, def, state)
+            local has_own_cmd = def.cmd ~= nil
+            local modified_def = vim.tbl_extend("force", {}, def, {
+                cmd = def.cmd or expanded,
+                title = send_opts.title,
+            })
+            local inst = backend.create(name, modified_def, state)
+            if inst and has_own_cmd then
+                backend.wait_for_ready(inst, { timeout_ms = def.startup_timeout }, function()
+                    backend.send(expanded, { inst }, backend_opts, state)
+                end)
+            end
+        end,
+    })
 end
 
 ---Send a single send item
 ---@param item wiremux.action.SendItem
 ---@param opts wiremux.config.ActionConfig
 local function send_single_item(item, opts)
-	local context = require("wiremux.context")
-	local config = require("wiremux.config")
+    local context = require("wiremux.context")
+    local input = require("wiremux.context.input")
+    local config = require("wiremux.config")
 
-	local ok, expanded = pcall(context.expand, item.value)
-	if not ok then
-		require("wiremux.utils.notify").error(expanded)
-		return
-	end
+    -- Expand sync placeholders
+    local ok, text = pcall(context.expand, item.value)
+    if not ok then
+        require("wiremux.utils.notify").error(text)
+        return
+    end
 
-	local submit = item.submit
-	if submit == nil then
-		submit = opts.submit or config.opts.actions.send.submit
-	end
+    local submit = item.submit
+    if submit == nil then
+        submit = opts.submit or config.opts.actions.send.submit
+    end
 
-	local pre_keys = item.pre_keys or opts.pre_keys
-	local post_keys = item.post_keys or opts.post_keys
+    local pre_keys = item.pre_keys or opts.pre_keys
+    local post_keys = item.post_keys or opts.post_keys
 
-	do_send(expanded, opts, {
-		submit = submit,
-		title = item.title,
-		pre_keys = pre_keys,
-		post_keys = post_keys,
-	})
+    -- Handle async {input} placeholders
+    local keys = input.find(text)
+    if #keys == 0 then
+        do_send(text, opts, {
+            submit = submit,
+            title = item.title,
+            pre_keys = pre_keys,
+            post_keys = post_keys,
+        })
+        return
+    end
+
+    input.resolve(keys, function(values)
+        if not values then
+            return
+        end
+        local resolved = input.replace(text, values)
+        do_send(resolved, opts, {
+            submit = submit,
+            title = item.title,
+            pre_keys = pre_keys,
+            post_keys = post_keys,
+        })
+    end)
 end
 
 ---Send from send library (picker)
 ---@param items wiremux.action.SendItem[]
 ---@param opts wiremux.config.ActionConfig
 local function send_from_library(items, opts)
-	local context = require("wiremux.context")
+    local context = require("wiremux.context")
 
-	local expanded = {}
-	for _, item in ipairs(items) do
-		local ok, value = pcall(context.expand, item.value)
-		if ok then
-			expanded[item] = value
-		end
-	end
+    local expanded = {}
+    for _, item in ipairs(items) do
+        local ok, value = pcall(context.expand, item.value)
+        if ok then
+            expanded[item] = value
+        end
+    end
 
-	local picker_items = build_picker_items(items)
+    local picker_items = build_picker_items(items)
 
-	if #picker_items == 0 then
-		require("wiremux.utils.notify").warn("No items available")
-		return
-	end
+    if #picker_items == 0 then
+        require("wiremux.utils.notify").warn("No items available")
+        return
+    end
 
-	local picker = require("wiremux.picker")
+    local picker = require("wiremux.picker")
 
-	picker.select(picker_items, {
-		prompt = "Select item",
-		format_item = function(picker_item)
-			return picker_item.label
-		end,
-	}, function(choice)
-		if not choice then
-			return
-		end
+    picker.select(picker_items, {
+        prompt = "Select item",
+        format_item = function(picker_item)
+            return picker_item.label
+        end,
+    }, function(choice)
+        if not choice then
+            return
+        end
 
-		local item = choice.value
-		local config = require("wiremux.config")
+        local item = choice.value
+        local config = require("wiremux.config")
 
-		local submit = item.submit
-		if submit == nil then
-			submit = opts.submit or config.opts.actions.send.submit
-		end
+        local submit = item.submit
+        if submit == nil then
+            submit = opts.submit or config.opts.actions.send.submit
+        end
 
-		local pre_keys = item.pre_keys or opts.pre_keys
-		local post_keys = item.post_keys or opts.post_keys
+        local pre_keys = item.pre_keys or opts.pre_keys
+        local post_keys = item.post_keys or opts.post_keys
 
-		do_send(expanded[item] or item.value, opts, {
-			submit = submit,
-			title = item.title,
-			pre_keys = pre_keys,
-			post_keys = post_keys,
-		})
-	end)
+        do_send(expanded[item] or item.value, opts, {
+            submit = submit,
+            title = item.title,
+            pre_keys = pre_keys,
+            post_keys = post_keys,
+        })
+    end)
 end
 
 ---Send text or item(s) to target
@@ -183,17 +203,17 @@ end
 ---@param text string|wiremux.action.SendItem|wiremux.action.SendItem[]
 ---@param opts? wiremux.config.ActionConfig
 function M.send(text, opts)
-	opts = opts or {}
+    opts = opts or {}
 
-	if type(text) == "table" and vim.islist(text) then
-		return send_from_library(text, opts)
-	end
+    if type(text) == "table" and vim.islist(text) then
+        return send_from_library(text, opts)
+    end
 
-	if type(text) == "table" then
-		return send_single_item(text, opts)
-	end
+    if type(text) == "table" then
+        return send_single_item(text, opts)
+    end
 
-	return send_single_item({ value = text }, opts)
+    return send_single_item({ value = text }, opts)
 end
 
 return M
