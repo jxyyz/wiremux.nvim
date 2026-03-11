@@ -78,6 +78,10 @@ end
 
 ---Refresh statusline on FocusGained
 local function refresh()
+	local client = require("wiremux.backend.tmux.client")
+	if not client.is_available() then
+		return
+	end
 	local backend = require("wiremux.backend.tmux")
 	backend.state.get_async(function(state)
 		if state then
