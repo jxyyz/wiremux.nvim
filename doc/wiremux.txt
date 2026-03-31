@@ -150,7 +150,17 @@ You can use a function for `label` to create dynamic display names:
   })
 <
 The `label` function receives:
-- `inst`: Instance info (id, target, kind, running_command, etc.)
+- `inst`: Instance object with fields:
+    - `id` (string) — pane ID, e.g. `%5`
+    - `target` (string) — target definition name
+    - `kind` ("pane"|"window")
+    - `window_id` (string) — e.g. `@1`
+    - `window_name` (string?) — tmux window name
+    - `window_index` (number?) — window number shown in status bar (1, 2, ...)
+    - `pane_index` (number?) — pane position within its window (0, 1, 2, ...)
+    - `running_command` (string?) — current command in the pane
+    - `origin` (string?) — origin pane ID
+    - `origin_cwd` (string?) — origin working directory
 - `index`: Instance number (1, 2, 3...) for targets with multiple instances
 
 ==============================================================================
