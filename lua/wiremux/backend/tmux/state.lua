@@ -13,6 +13,7 @@ local client = require("wiremux.backend.tmux.client")
 ---@field origin_cwd string
 ---@field last_used_at number?
 ---@field window_name string?
+---@field window_index number?
 ---@field pane_index number?
 ---@field running_command string?
 
@@ -25,12 +26,13 @@ local client = require("wiremux.backend.tmux.client")
 ---@return wiremux.Instance?
 local function parse_pane_line(line)
 	local parts = vim.split(line, ":", { plain = true })
-	if #parts < 10 then
+	if #parts < 11 then
 		return nil
 	end
 
-	local id, window_id, target, origin, origin_cwd, kind, last_used_at, window_name, pane_index = unpack(parts, 1, 9)
-	local running_command = table.concat(parts, ":", 10)
+	local id, window_id, target, origin, origin_cwd, kind, last_used_at, window_name, window_index, pane_index =
+		unpack(parts, 1, 10)
+	local running_command = table.concat(parts, ":", 11)
 
 	if not target or target == "" then
 		return nil
@@ -45,6 +47,7 @@ local function parse_pane_line(line)
 		kind = kind == "window" and "window" or "pane",
 		last_used_at = tonumber(last_used_at),
 		window_name = window_name ~= "" and window_name or nil,
+		window_index = tonumber(window_index),
 		pane_index = tonumber(pane_index),
 		running_command = running_command ~= "" and running_command or nil,
 	}
