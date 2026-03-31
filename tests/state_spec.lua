@@ -27,7 +27,7 @@ describe("state", function()
 					"list-panes",
 					"-a",
 					"-F",
-					"#{pane_id}:#{window_id}:#{@wiremux_target}:#{@wiremux_origin}:#{@wiremux_origin_cwd}:#{@wiremux_kind}:#{@wiremux_last_used_at}:#{window_name}:#{pane_index}:#{pane_current_command}",
+					"#{pane_id}:#{window_id}:#{@wiremux_target}:#{@wiremux_origin}:#{@wiremux_origin_cwd}:#{@wiremux_kind}:#{@wiremux_last_used_at}:#{window_name}:#{window_index}:#{pane_index}:#{pane_current_command}",
 				}
 			end,
 		}
@@ -56,7 +56,7 @@ describe("state", function()
 			client.query = function()
 				return {
 					"%0",
-					"%1:@1:test1:%0:/home:pane:1000::0:zsh\n%2:@1:test2:%0:/home:pane:2000::1:npm\n",
+					"%1:@1:test1:%0:/home:pane:1000::1:0:zsh\n%2:@1:test2:%0:/home:pane:2000::1:1:npm\n",
 				}
 			end
 
@@ -75,7 +75,7 @@ describe("state", function()
 			client.query = function()
 				return {
 					"%0",
-					"%1:@1:test1:%0:/home:pane:1000::0:zsh\n%2:@1:test2:%0:/home:pane:2000::1:zsh\n",
+					"%1:@1:test1:%0:/home:pane:1000::1:0:zsh\n%2:@1:test2:%0:/home:pane:2000::1:1:zsh\n",
 				}
 			end
 
@@ -88,7 +88,7 @@ describe("state", function()
 			client.query = function()
 				return {
 					"%0",
-					"%1:@1::%0:/home:pane:1000::0:zsh\n%2:@1:test:%0:/home:pane:2000::1:zsh\n",
+					"%1:@1::%0:/home:pane:1000::1:0:zsh\n%2:@1:test:%0:/home:pane:2000::1:1:zsh\n",
 				}
 			end
 
@@ -102,7 +102,7 @@ describe("state", function()
 			client.query = function()
 				return {
 					"%0",
-					"%1:@1:test:%0:/home:window:1000:mywindow:0:zsh\n",
+					"%1:@1:test:%0:/home:window:1000:mywindow:1:0:zsh\n",
 				}
 			end
 
@@ -116,7 +116,7 @@ describe("state", function()
 			client.query = function()
 				return {
 					"%0",
-					"%1:@1:test:::pane:1000::0:\n",
+					"%1:@1:test:::pane:1000::1:0:\n",
 				}
 			end
 
@@ -131,7 +131,7 @@ describe("state", function()
 			client.query = function()
 				return {
 					"%0",
-					"%1:@1:test:%0:/home:pane:1000::0:npm\n",
+					"%1:@1:test:%0:/home:pane:1000::1:0:npm\n",
 				}
 			end
 
@@ -145,7 +145,7 @@ describe("state", function()
 			client.query = function()
 				return {
 					"%0",
-					"%1:@1:test:%0:/home:pane:1000::0:node:inspect\n",
+					"%1:@1:test:%0:/home:pane:1000::1:0:node:inspect\n",
 				}
 			end
 
@@ -159,7 +159,7 @@ describe("state", function()
 			client.query = function()
 				return {
 					"%0",
-					"invalid\n%1:@1:test:%0:/home:pane:1000::0:zsh\n",
+					"invalid\n%1:@1:test:%0:/home:pane:1000::1:0:zsh\n",
 				}
 			end
 
